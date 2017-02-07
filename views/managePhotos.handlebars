@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>Photo Day Selector</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="stylesheet" href="assets/normalize.min.css">
+    <link href="assets/roboto.css" rel="stylesheet">    
+    <link href="assets/style.css" rel="stylesheet">
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    
+  </head>
+  <body>
+    
+    <div class="header">
+      <span class="left-arrow"><</span>
+      <span class="current-name"></span>
+      <span class="right-arrow">></span>
+    </div>
+
+    <div id="photos_list">
+      
+    </div>
+      
+    <div id="users_list">
+      <ul id="users_inner_list"></ul>  
+    </div>
+    
+    
+    <script src="assets/jquery-3.1.1.min.js"></script>
+    <script src="assets/socket.io-1.4.5.js"></script>
+
+    <script>
+      
+      var users = getAllUsers() || [];      
+      var currentUser = localStorage.getItem('currentUser') || 0;
+      
+      
+      
+      var socket = io('http://{{ipAddress}}:6655');
+
+      socket.on('new_customer', function(data) {
+        users.push(data);
+        localStorage.setItem('users', JSON.stringify(users));
+        addUserToList(data, (users.length - 1));
+        checkArrows();
+      });
+
+      socket.on('new_photo_db', function (data) {
+        users[currentUser].photos.push(data);
+        localStorage.setItem('users', JSON.stringify(users));
+        $('#photos_list').append(photoTemplate(data, users[currentUser].photos.length - 1));
+        addPhoto(currentUser, data);
+      });
+      
+      $('.current-name').click(function(e){
+        $('#users_list').toggleClass('visible');
+      });
+      
+      $(document).delegate('.user-menu-item', 'click', function(e){
+        e.preventDefault();
+        var userIndex = $(this).attr('id').split('-');
+        var userIndex = userIndex[1];
+        currentUser = parseInt(userIndex);
+        localStorage.setItem('currentUser', currentUser);
+        loadUser(currentUser);
+        checkArrows();
+        $('#users_list').toggleClass('visible');
+      });
+      
+      $('.left-arrow').click(function(e){
+        e.preventDefault();
+        currentUser--;
+        localStorage.setItem('currentUser', currentUser);
+        loadUser(currentUser);
+        checkArrows();
+      });
+      
+      $('.right-arrow').click(function(e){
+        e.preventDefault();
+        currentUser++;
+        localStorage.setItem('currentUser', currentUser);
+        loadUser(currentUser);
+        checkArrows();
+      });
+      
+      $(document).delegate('.photo-thumb img', 'click', function(e){
+        e.preventDefault();
+        socket.emit('show_photo', users[currentUser].photos[$(this).parent().attr('id')]);
+      });
+      
+      $(document).delegate('.photo-thumb-select', 'click', function(e){
+        e.preventDefault();
+        var selectedImage = $(this).parent().attr('id');
+        $(this).parent().toggleClass('selected');
+        users[currentUser].photos[selectedImage].selected = !users[currentUser].photos[selectedImage].selected;
+        localStorage.setItem('users', JSON.stringify(users));
+        saveSelected(currentUser, selectedImage);
+        socket.emit('photo_selected', {
+          currentUser: currentUser, 
+          selectedImage: selectedImage, 
+          value: users[currentUser].photos[selectedImage].selected,
+          photo: users[currentUser].photos[selectedImage]
+        });
+      });
+      
+      socket.on('photo_selected_echo', function(data){
+        users[data.currentUser].photos[data.selectedImage].selected = data.value;
+        localStorage.setItem('users', JSON.stringify(users));
+        if(currentUser === data.currentUser){
+          if(data.value){
+            $(`#${data.selectedImage}`).removeClass('selected');
+            $(`#${data.selectedImage}`).addClass('selected');
+          }
+          else{
+            $(`#${data.selectedImage}`).removeClass('selected');
+          }
+          
+        }
+      });
+      
+      function loadUser(index){
+        if((users.length) > index){
+          $('#photos_list').html("");
+          $('.current-name').html(users[index].name);
+          users[index].photos.forEach(function(item, index){
+            $('#photos_list').append(photoTemplate(item, index));
+          });
+        }
+      }
+      
+      function checkArrows(){
+        if(currentUser == 0){
+          $(".left-arrow").hide();
+        }
+        else{
+          $(".left-arrow").show();
+        }
+        if((users.length - currentUser -1) <= 0){
+          $(".right-arrow").hide();
+        }
+        else{
+          $(".right-arrow").show();
+        }
+      }
+      
+      function photoTemplate(photo, index){
+        var selectedClass = "";
+        if(photo.selected){
+          selectedClass = "selected";
+        }
+        return `
+          <div class="photo-thumb ${selectedClass} ${photo._id}" id="${index}">
+            <img src="/watch_folder/${photo.previewUrl}" />
+            <span class="filename">${photo.filename}</span>
+            <button class="photo-thumb-select">Select</button>
+          </div>
+        `;
+      }
+      
+      function saveSelected(currentUser, currentPhoto){
+          var user = users[currentUser];
+          var photo = user.photos[currentPhoto];
+        
+          var formData = {
+              'selected'              : photo.selected,
+          };
+
+          $.ajax({
+              type        : 'PUT', // define the type of HTTP verb we want to use (POST for our form)
+              url         : `/user/${user._id}/photo/${photo._id}`, // the url where we want to POST
+              data        : formData, // our data object
+              dataType    : 'json', // what type of data do we expect back from the server
+              encode      : true
+          })
+          .done(function(data){
+          });
+      }
+      
+      function getAllUsers(){
+        $.ajax({
+          type: 'GET',
+          url: '/users',
+          dataType: 'json',
+        })
+        .done(function(data){
+          localStorage.setItem('users', JSON.stringify(data.users));
+          users = data.users;
+          
+          checkArrows();
+          loadUser(currentUser);
+          fillUsersList(data.users);
+        });
+      }
+      
+      function fillUsersList(users){
+        users.forEach(function(user, index){
+          $('#users_inner_list').append(`
+            <li class="user-menu-item" id="user-${index}">${user.name}</li>
+          `);
+        });
+      }
+      
+      function addUserToList(user, index){
+        $('#users_inner_list').append(`
+            <li class="user-menu-item" id="user-${index}">${user.name}</li>
+        `);
+      }
+      
+      function addPhoto(currentUser, newPhoto){
+        var user = users[currentUser];
+        $.ajax({
+          type: 'POST',
+          url: `/user/${users[currentUser]._id}/photo/${newPhoto._id}`,
+          dataType: 'json',
+        })
+        .done(function(data){    
+        });
+      }
+
+    </script>
+  </body>
+</html>

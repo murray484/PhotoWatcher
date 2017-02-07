@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>Photo Day TV Mode</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="stylesheet" href="assets/normalize.min.css">
+    <link href="assets/roboto.css" rel="stylesheet">
+    <link href="assets/style.css" rel="stylesheet">
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    
+  </head>
+  <body>
+    <div id="settings-modal">
+      <div class="settings-modal-box">
+        <span class="close-button">&times;</span>
+        <h1>Settings</h1>
+        <button id="follow-selector">Follow Selector </button>
+      </div>
+    </div>
+    <div id="photo">
+
+    </div>
+    <div id="filename"></div>
+    
+    
+    
+    <script src="assets/jquery-3.1.1.min.js"></script>
+    <script src="assets/socket.io-1.4.5.js"></script>
+    <script>
+    var socket = io('http://{{ipAddress}}:6655');
+    socket.on('new_photo_db', function (data) {
+      $('#photo').css("background-image", `url(/watch_folder/${data.previewUrl})`);  
+      $('#filename').html(data.filename);
+    });
+    var follow_selector = false;
+    socket.on('display_photo', function(data){
+      if(follow_selector){
+        $('#photo').css("background-image", `url(/watch_folder/${data.previewUrl})`);  
+        $('#filename').html(data.filename);
+      }
+    });
+      
+    $('#photo').click(function(e){
+      e.preventDefault();
+      $('#settings-modal').toggleClass('visible-flex');
+    });
+      
+    $('.close-button').click(function(e){
+      e.preventDefault();
+      $('#settings-modal').toggleClass('visible-flex');
+    });
+    
+    $('#follow-selector').click(function(e){
+      e.preventDefault();
+      $('#follow-selector').toggleClass('on');
+      
+      follow_selector = !follow_selector;
+    });
+    
+    </script>
+  </body>
+</html>

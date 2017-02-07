@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>Photo Day Overview</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link href="assets/roboto.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/normalize.min.css">
+    <link href="assets/milligram.min.css" rel="stylesheet">
+    <link href="assets/dropzone.css" rel="stylesheet">
+    <link href="assets/styleLight.css" rel="stylesheet">
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    
+  </head>
+  <body>
+    
+    <div class="container">
+      <div class="row">
+        <div class="column"><h1>Move Photos</h1></div>
+      </div>
+      
+      <div class="header-row">
+        <div class="row">
+          <div class="column column-25">Name</div>
+          <div class="column column-25">Email</div>
+          <div class="column column-50">
+            Photos
+          </div>
+        </div>
+      </div>
+      <div class="images">
+              
+      </div>
+    
+    <script src="assets/jquery-3.1.1.min.js"></script>
+    <script src="assets/socket.io-1.4.5.js"></script>
+    <script src="assets/dropzone.js"></script>
+    <script src="assets/jquery-ui.min.js"></script>
+    <script>
+      var socket = io('http://{{ipAddress}}:6655');
+      var count = 0;
+      initialLoad();
+      
+      var users;
+      var sort;
+            
+      
+      function renderRow(customer){
+        var photoString = "";
+        customer.photos.forEach(function(photo){
+          photoString += getImageThumb(photo);
+        });
+        
+        if(photoString === ""){
+          photoString = "<span class='image-placeholder'></span>";
+        }
+        
+        return `
+
+           <article class="image-row" id="${customer._id}">
+              <div class="row">
+                <div class="column column-25">${customer.name}</div>
+                <div class="column column-25">${customer.email}</div>
+                <div class="column column-50 sortable-images" id="photos-${customer._id}">
+                  ${photoString}
+                </div>
+              </div>
+            </div>
+          </article>
+
+        `;
+      }
+      
+      
+      
+      function replaceRow(customer){
+        var photoString = "";
+        customer.photos.forEach(function(photo){
+          photoString += getImageThumb(photo);
+        });
+        
+        console.log(customer);
+        
+        $(`#${customer._id}`).html(`
+
+              <div class="row">
+                <div class="column column-25">${customer.name}</div>
+                <div class="column column-25">${customer.email}</div>
+                <div class="column column-50 sortable-images" id="photos-${customer._id}">
+                  ${photoString}
+                </div>
+              </div>
+            </div>
+
+        `);
+      }
+      
+      function getImageThumb(image){
+        return `
+          <a href="/watch_folder/${image.filename}" class="image-thumb" id="${image._id}" download><img src="/watch_folder/${image.previewUrl}" /></a>
+        `;
+      }
+      
+      function findPhoto(photoId){
+        return new Promise( function(resolve, reject){
+          users.forEach(function(user){
+            user.photos.forEach(function(photo){
+              if(photo._id === photoId){
+                resolve(photo);
+              }
+            });
+          });
+        });
+        reject('none found');
+      }
+      
+      function findPhotoUser(photoId){
+        return new Promise( function(resolve, reject){
+          users.forEach(function(user, userIndex){
+            user.photos.forEach(function(photo, photoIndex){
+              if(photo._id === photoId){
+                resolve({userIndex: userIndex, photoIndex: photoIndex});
+              }
+            });
+          });
+          reject('none found');
+        });
+        
+      }
+      
+      function initialLoad(){
+        $.ajax({
+          type: 'GET',
+          url: '/users',
+          dataType: 'json',
+        })
+        .done(function(data){
+          count = data.users.length;
+          users = data.users;
+          $("#user_count").html(count);
+          data.users.forEach(function(user){
+            $(".images").append(renderRow(user));
+          });
+          
+          sort = $(".sortable-images").sortable({
+            connectWith: ".sortable-images",
+            opacity: 0.5,
+            placeholder: "image-placeholder",
+            stop: function(event, ui) {
+                ui.item.before("\n").after("\n");
+            },
+            receive: function(event, ui) {
+              
+              var from = ui.sender.attr('id').split('-')[1];
+              var to = ui.item.parent().attr('id').split('-')[1];
+              
+              if(to !== from){
+                moveImage(ui.item.attr('id'), from, to);
+              }
+            }
+          }).disableSelection();
+        });
+      }
+      
+      function findUser(userId) {
+        for (var i = 0, len = users.length; i < len; i++) {
+            if (users[i]._id === userId)
+                return i; // Return as soon as the object is found
+        }
+        return null; // The object was not found
+      }
+      
+      function moveImage(image, from, to){
+        var formData = {
+          'image': image,
+          'from': from,
+          'to': to
+        }
+        $.ajax({
+          type        : 'POST', // define the type of HTTP verb we want to use (POST for our form)
+          url         : `/movephoto`, // the url where we want to POST
+          data        : formData, // our data object
+          dataType    : 'json', // what type of data do we expect back from the server
+          encode      : true
+        })
+        .done(function(data){
+          
+        });
+      }
+      
+      socket.on('customer_updated', function (data) {
+        replaceRow(data);
+        var index = findUser(data._id);
+        users[index] = data;
+      });
+      
+      socket.on('new_customer', function (data) {
+        $(".images").append(renderRow(data));
+        users.push(data);
+        count++;
+        $("#user_count").html(count);
+      });
+      
+      
+      socket.on('photo_edited', function (data){
+        console.log("edited");
+        findPhotoUser(data._id)
+          .then(function(indexes){
+            users[indexes.userIndex].photos[indexes.photoIndex] = data;
+            console.log(users[indexes.userIndex].photos[indexes.photoIndex]);
+            replaceRow(users[indexes.userIndex]);
+          });
+      });
+      
+      
+    </script>
+  </body>
+</html>

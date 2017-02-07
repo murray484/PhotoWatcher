@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>Photo Day TV Mode</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+     <meta name="apple-mobile-web-app-capable" content="yes">
+
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="stylesheet" href="assets/normalize.min.css">
+    <link href="assets/roboto.css" rel="stylesheet">
+    <link href="assets/style.css" rel="stylesheet">
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    
+  </head>
+  <body>
+    <div id="photo">
+
+    </div>
+    
+    
+    
+    <script src="assets/jquery-3.1.1.min.js"></script>
+    <script src="assets/socket.io-1.4.5.js"></script>
+    <script>
+      var photos = [];
+      var currentPhoto = 0;
+      
+      getAllPhotos();
+      
+
+      var socket = io('http://{{ipAddress}}:6655');
+      socket.on('photo_selected_echo', function (data) {
+        var photoId = findPhoto(data.photo._id);
+        
+        if(photoId === -1 && data.photo.selected){
+          photos.push(data.photo);
+        }
+        else if(photoId > -1 && !data.photo.selected){
+          photos.splice(photoId,1);
+        }
+      });
+      
+      function findPhoto(photoId) {
+          for (var i = 0, len = photos.length; i < len; i++) {
+              if (photos[i]._id === photoId)
+                  return i; // Return as soon as the object is found
+          }
+          return -1; // The object was not found
+      }
+
+      function getAllPhotos(){
+        $.ajax({
+          type: 'GET',
+          url: '/photos',
+          dataType: 'json',
+        })
+        .done(function(data){
+          photos = data.photos;
+          $('#photo').css("background-image", `url(/watch_folder/${photos[0].previewUrl})`); 
+          showSlides();
+        });
+      }
+      
+      function showSlides(){
+        $('#photo').css("background-image", `url(/watch_folder/${photos[currentPhoto].previewUrl})`); 
+        
+        currentPhoto++;
+        
+        if(currentPhoto >= photos.length){
+          currentPhoto = 0;
+        }
+        
+        setTimeout(showSlides, 6000);
+      }
+      
+    
+    
+    </script>
+  </body>
+</html>
