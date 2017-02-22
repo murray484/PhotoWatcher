@@ -6,6 +6,7 @@ const path = require('path');
 const ip = require('ip');
 const multer = require('multer');
 
+/* Set up the file uploader for the edited photos*/
 var upload = multer({
   dest: './static/finals/',
 });
@@ -14,34 +15,42 @@ module.exports = function(io) {
 
   const router = express.Router();
 
+  // Render the photo viewer screen
   router.get('/latestPhoto', (req, res) => {
     res.render('latestPhoto', {ipAddress: ip.address()});
   });
 
+  // Render the photographer console
   router.get('/manage', (req, res) => {
     res.render('managePhotos', {ipAddress: ip.address()});
   });
 
+  // Render the signin page
   router.get('/signin', (req, res) => {
     res.render('signin', {ipAddress: ip.address()});
   });
   
+  // Render the editor screen list
   router.get('/overview', (req, res) => {
     res.render('overview', {ipAddress: ip.address()});
   });
   
+  // Render the move photos screen
   router.get('/movephotos', (req, res) => {
     res.render('movePhotos', {ipAddress: ip.address()});
   });
   
+  // Render the slideshow
   router.get('/slideshow', (req, res) => {
     res.render('slideshow', {ipAddress: ip.address()});
   });
   
+  // Render the user photo retreival page
   router.get('/myphotos/', (req, res) => {
     res.render('getPhotos', {ipAddress: ip.address(), email: req.query.email});
   });
   
+  // Render a list of customers that can be imported into MailChimp.
   router.get('/getlist', (req, res) => {
     customer.find({}).exec()
       .then((customersList) => {
@@ -52,6 +61,8 @@ module.exports = function(io) {
       });
   });
   
+  // Takes the list of customers and returns a comma 
+  // separated list of names and emails.
   function makeCSV(customerList){
     return new Promise((resolve, reject) => {
       var csv = "";
@@ -69,10 +80,13 @@ module.exports = function(io) {
     });
   }
   
+  // Get the main page, with links to each screen type.
   router.get('/', (req, res) => {
     res.render('index', {ipAddress: ip.address()});
   });
   
+  // The RESTful endpoint for the signup screen.
+  // Adds a new user to the list.
   router.post('/signin', (req, res) => {
     const newCustomer = new customer({
       name: req.body.name,
@@ -92,6 +106,7 @@ module.exports = function(io) {
       });
   });
   
+  // Moves an image from one customer to another.
   router.post('/movephoto', (req, res) => {
     let oldCustomer;
     let movedImage;
@@ -121,6 +136,7 @@ module.exports = function(io) {
       });
   });
   
+  // Finds a photo in an array of images.
   function findPhoto(photos, photoId){
     return new Promise((resolve, reject) => {
       console.log(photos);
@@ -134,6 +150,7 @@ module.exports = function(io) {
     });
   }
   
+  // Marks an image in a customer's profile as selected.
   router.put('/user/:userId/photo/:photoId', (req, res) => {
     var userId = req.params.userId;
     var photoId = req.params.photoId;
@@ -159,6 +176,7 @@ module.exports = function(io) {
       });
   });
   
+  // Gets a list of all of the customers and their photos.
   router.get('/users', (req, res) => {
     customer.find({}).populate('photos').exec()
       .then((theCustomers) => {
@@ -169,6 +187,7 @@ module.exports = function(io) {
       });
   });
   
+  // Adds a new image to a customer's profile.
   router.post('/user/:userId/photo/:photoId', (req, res) => {
     var userId = req.params.userId;
     var photoId = req.params.photoId;
@@ -189,6 +208,7 @@ module.exports = function(io) {
       });
   });
   
+  // Gets the latest image added to the system.
   router.get('/lastPhoto', (req, res) => {
     photo.find({}).sort({_id: 1}).limit(1).exec()
       .then((latestPhoto) => {
@@ -200,6 +220,7 @@ module.exports = function(io) {
       });
   });
   
+  // Gets all of the images for a given user.
   router.post('/getphotos', (req, res) => {
     customer.findOne({email: req.body.email}).populate('photos').exec()
       .then((theUser) => {
@@ -211,6 +232,7 @@ module.exports = function(io) {
       });
   });
   
+  // Returns a direct link to the edited version of a photo.
   router.get('/photos/:id/final', (req, res, next) => {
     photo.findById(req.params.id, function(err, photo){
       if (err) return next(err)
@@ -226,6 +248,7 @@ module.exports = function(io) {
     });
   })
   
+  // Returns all of the selected photos in the system.
   router.get('/photos', (req, res) => {
     photo.find({selected: true}).exec()
       .then((thePhotos) => {
@@ -237,8 +260,7 @@ module.exports = function(io) {
       });
   });
   
-  
-  
+  // Uploads the final edited photo and saves it.
   router.post('/photos/edit/:id', upload.single('file'), (req, res) => {
     photo.findById(req.params.id)
       .then((thePhoto) => {
@@ -253,8 +275,6 @@ module.exports = function(io) {
         res.status(500).json({success: false});
       });;
   });
-  
-  
   
   return router;
   
