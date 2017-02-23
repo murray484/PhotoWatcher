@@ -64,7 +64,7 @@ Clicking on a thumbnail will open up the editor window.  Here, you are given a l
 ## Get Photos
 ![Get Photos](https://s31.postimg.org/e3dwy0tuz/get_photo_view.png)  
 This view is intended for clients.  When we ran this app, we ran the entire event off of localhost, and then uploaded just this view to a public web server to allow our clients to retreive their photos.  This required editing the main routes file in ```./routes/main.js``` and commenting out all of the other routes.  This page has two ways to access it.  The first method is to visit the page and enter your email address.  The other method is to include the email as a url parameter.  This allows you to programatically send links (we sent an email with MailChimp).  Once the user is authenticated with their email, they will see the following screen:  
-![My Photos](https://s31.postimg.org/5juj09lij/my_photos.png)  
+![My Photos](https://s21.postimg.org/krut1l97b/68747470733a2f2f7333312e706f7374696d672e6f72672f.png)  
 
 ## Generate CSV
 Finally, there is an option to generate a csv file of all of the names and email addresses.  We added this so that we could get a nice list to import into MailChimp.  Please note that as of now, there is no authentication on this route, and as such, it should only be enabled on localhost.  Simply visit ```localhost:6655/getlist```.  The contents of the file will be shown in the browser as plain text.  Copy and paste this as you please.  
