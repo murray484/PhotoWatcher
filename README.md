@@ -28,7 +28,8 @@ To install PhotoWatcher, follow these steps.
 1. Clone this repository into a folder on your server computer: ```git clone https://github.com/murray484/PhotoWatcher.git```
 2. Run ```npm install```
 3. Edit the watchFolder variable in config.js to match the session name of your tethering session.  It must remain inside the static/watch_folder directory (this is required for Lightroom, you might have to alter this depending on the software you use).  
-4. Start the server by running ```npm start```
+4. Replace ```static/assets/logo.svg``` with your logo
+5. Start the server by running ```npm start```
 
 # Usage
 The application is divided into several components.  Their usage is detailed in the following sections.  Each screen is accessible from links on the main page (available at http://localhost:6655).  
